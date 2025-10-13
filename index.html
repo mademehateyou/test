@@ -1,0 +1,85 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/css.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+    <main id="slides-container">
+  <!-- First slide: Video -->
+  <section class="slide slide-video">
+  <video autoplay muted playsinline id="bg-video">
+    <source src="video/1111.mp4" type="video/mp4">
+    <source src="video/2222.mp4" type="video/mp4">
+  </video>
+</section>
+<section class="slide"></section>
+<section class="slide"></section>
+<section class="slide"></section>
+<div id="slides-container">
+  <section class="slide slide-footer">
+    <img src="images/album coverrr.jpg" alt="Album cover" class="footer-img">
+    <a href="https://albumoutnow.mssg.me/" target="_blank" class="footer-link">LISTEN</a>
+  </section>
+</div>
+
+<button id="slideToggleBtn" aria-label="Next slide">
+  <span class="arrow-wrapper">
+    <img id="arrowIcon" src="images/pb.png" alt="arrow">
+  </span>
+</button>
+
+
+
+<script>const slides = document.querySelectorAll('.slide');
+const toggleBtn = document.getElementById('slideToggleBtn');
+const arrowIcon = document.getElementById('arrowIcon');
+
+let currentSlideIndex = 0;
+let rotation = 180; // start arrow flipped
+
+// Initial arrow rotation
+arrowIcon.style.transform = `rotate(${rotation}deg)`;
+
+// Toggle between **first** and **last** slide
+toggleBtn.addEventListener('click', () => {
+  currentSlideIndex = currentSlideIndex === 0 ? slides.length - 1 : 0;
+  slides[currentSlideIndex].scrollIntoView({ behavior: 'smooth' });
+
+  // Rotate arrow one way
+  rotation += 180;
+  arrowIcon.style.transform = `rotate(${rotation}deg)`;
+});
+
+// VIDEO SWITCHING
+const videoPlayer = document.getElementById("bg-video");
+const sources = ["video/1111.mp4", "video/2222.mp4"];
+let currentVideoIndex = 0;
+
+function playVideo(index) {
+  videoPlayer.src = sources[index];
+  videoPlayer.play();
+}
+
+// Start first video
+playVideo(currentVideoIndex);
+
+// Switch video on end
+videoPlayer.addEventListener("ended", () => {
+  currentVideoIndex = (currentVideoIndex + 1) % sources.length;
+  playVideo(currentVideoIndex);
+});
+</script>
+
+
+
+
+</body>
+</html>
