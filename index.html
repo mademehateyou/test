@@ -28,10 +28,10 @@
   <!-- Last (footer) slide - put countdown here -->
   <section class="slide slide-footer">
     <div id="countdown">
-  <span id="days"></span><span class="label">D</span>
-  <span id="hours"></span><span class="label">H</span>
-  <span id="minutes"></span><span class="label">M</span>
-  <span id="seconds"></span><span class="label">S</span>
+  <span id="days">--</span>d
+  <span id="hours">--</span>h
+  <span id="minutes">--</span>m
+  <span id="seconds">--</span>s
 </div>
   </section>
 </main>
@@ -84,37 +84,287 @@ videoPlayer.addEventListener("ended", () => {
 </script>
 
 <script>
-    // Set your target date
-    const targetDate = new Date("October 13, 2025 21:00:00").getTime();
+/**
+ * Find the UTC timestamp (ms since epoch) corresponding to the given
+ * local wall-clock in the specified IANA timeZone (e.g. "Europe/Kyiv").
+ * Uses Intl.formatToParts and a small binary search so it handles DST correctly.
+ */
+function getTimestampForZonedLocal(year, month, day, hour, minute = 0, second = 0, timeZone = 'Europe/Kyiv') {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
 
-    const countdown = document.getElementById("countdown");
-
-    function updateCountdown() {
-      const now = new Date().getTime();
-      const distance = targetDate - now;
-
-      if (distance < 0) {
-        countdown.innerHTML = "Countdown finished!";
-        clearInterval(interval);
-        return;
-      }
-
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-      countdown.innerHTML = `${days}D ${hours}S ${minutes}M ${seconds}S`;
+  function partsFor(ts) {
+    const parts = dtf.formatToParts(new Date(ts));
+    const map = {};
+    for (const p of parts) {
+      if (p.type !== 'literal') map[p.type] = p.value;
     }
+    return {
+      year: Number(map.year),
+      month: Number(map.month),
+      day: Number(map.day),
+      hour: Number(map.hour),
+      minute: Number(map.minute),
+      second: Number(map.second)
+    };
+  }
 
-    const interval = setInterval(updateCountdown, 1000);
-    updateCountdown(); // Run immediately
+  // target tuple to match
+  const target = { year, month, day, hour, minute, second };
+
+  // Start search window: build a baseline UTC timestamp close to the expected instant.
+  // Use Date.UTC of same components as a starting point (treat those components as if UTC),
+  // then search +/- 36 hours to be safe.
+  let baseline = Date.UTC(year, month - 1, day, hour, minute, second);
+  let low = baseline - 36 * 3600 * 1000;
+  let high = baseline + 36 * 3600 * 1000;
+
+  // Binary search for an instant whose formatted zone-local parts match target.
+  let found = null;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const p = partsFor(mid);
+
+    // compare lexicographically
+    const cmp =
+      (p.year - target.year) ||
+      (p.month - target.month) ||
+      (p.day - target.day) ||
+      (p.hour - target.hour) ||
+      (p.minute - target.minute) ||
+      (p.second - target.second);
+
+    if (cmp === 0) {
+      found = mid;
+      break;
+    } else if (cmp < 0) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  if (found === null) {
+    throw new Error('Unable to resolve time in timezone (Intl support required).');
+  }
+  return found;
+}
+
+/** Get the next Tuesday (>= today) at 21:00 in Kyiv, and return its UTC timestamp. */
+function nextTuesdayAt21KyivTimestamp() {
+  const tz = 'Europe/Kyiv';
+  // get current Kyiv local date parts
+  const now = new Date();
+  const dtfNow = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false
+  });
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(now);
+  const map = {};
+  for (const p of parts) if (p.type !== 'literal') map[p.type] = Number(p.value);
+
+  // Construct Kyiv "today" date components
+  const kyivYear = map.year;
+  const kyivMonth = map.month;
+  const kyivDay = map.day;
+  let kyivWeekday = new Intl.DateTimeFormat('en-US',{timeZone:tz,weekday:'short'}).format(now); // e.g. "Tue"
+  // Determine numeric weekday (0=Sunday,1=Monday,...6=Saturday) — use a mapping
+  const wmap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+  let kyivWeekdayNum = wmap[kyivWeekday];
+
+  // find days to add to reach next Tuesday (if today is Tuesday but earlier than 21:00 Kyiv, keep today)
+  const targetWeekday = 2; // Tuesday
+  // current Kyiv hour/minute/second
+  const kyivHour = map.hour;
+  const kyivMinute = map.minute;
+  const kyivSecond = map.second;
+
+  // compute delta days
+  let deltaDays = (targetWeekday - kyivWeekdayNum + 7) % 7;
+  // If it's today (deltaDays==0) but time already past 21:00, we need next week's Tuesday
+  if (deltaDays === 0) {
+    const alreadyPast = (kyivHour > 21) || (kyivHour === 21 && (kyivMinute > 0 || kyivSecond > 0));
+    if (alreadyPast) deltaDays = 7;
+  }
+
+  // find the calendar date for the target Kyiv local day
+  const candidateKyivDate = new Date(Date.UTC(kyivYear, kyivMonth - 1, kyivDay));
+  candidateKyivDate.setUTCDate(candidateKyivDate.getUTCDate() + deltaDays);
+
+  const targetYear = candidateKyivDate.getUTCFullYear();
+  const targetMonth = candidateKyivDate.getUTCMonth() + 1;
+  const targetDay = candidateKyivDate.getUTCDate();
+
+  // finally convert Kyiv local 21:00 on that date into UTC timestamp
+  return getTimestampForZonedLocal(targetYear, targetMonth, targetDay, 21, 0, 0, tz);
+}
+
+/** Render & update countdown every second */
+(function startCountdown() {
+  let targetTs;
+  try {
+    targetTs = nextTuesdayAt21KyivTimestamp();
+  } catch (e) {
+    document.getElementById('countdown').innerText = 'This browser does not support necessary Intl features.';
+    console.error(e);
+    return;
+  }
+
+  const elDays = document.getElementById('days');
+  const elHours = document.getElementById('hours');
+  const elMinutes = document.getElementById('minutes');
+  const elSeconds = document.getElementById('seconds');
+
+  function update() {
+    const now = Date.now();
+    let diff = Math.max(0, targetTs - now);
+
+    const days = Math.floor(diff / (24 * 3600 * 1000));
+    diff -= days * 24 * 3600 * 1000;
+    const hours = Math.floor(diff / (3600 * 1000));
+    diff -= hours * 3600 * 1000;
+    const minutes = Math.floor(diff / (60 * 1000));
+    diff -= minutes * 60 * 1000;
+    const seconds = Math.floor(diff / 1000);
+
+    elDays.textContent = String(days).padStart(2, '0');
+    elHours.textContent = String(hours).padStart(2, '0');
+    elMinutes.textContent = String(minutes).padStart(2, '0');
+    elSeconds.textContent = String(seconds).padStart(2, '0');
+
+    if (targetTs <= now) {
+      // reached target: compute next Tuesday again (in case user keeps page open)
+      try {
+        targetTs = nextTuesdayAt21KyivTimestamp();
+      } catch (err) {
+        console.error(err);
+        clearInterval(interval);
+      }
+    }
+  }
+
+  update();
+  const interval = setInterval(update, 1000);
+})();
 </script>
+Notes & behavior
 
+This targets the next Tuesday at 21:00 Kyiv time. If the current Kyiv time is Tuesday before 21:00, it counts down to today at 21:00; otherwise it goes to the following Tuesday.
+
+It uses Intl features (widely supported in modern browsers). If the browser lacks Intl.formatToParts (very old browsers), it will log an error and show a fallback message.
+
+The getTimestampForZonedLocal binary-search method correctly handles DST transitions because it finds the exact instant that produces the requested local wall-clock in the Europe/Kyiv zone.
+
+You can style the #countdown element however you like; the script just updates the four spans.
+
+Want a compact version (no comments) or an embeddable component with day/month labels and custom styling? I can give that next.
+
+
+
+
+
+
+
+You said:
+it is very long, you already gave me script for countdown that targets time in ukrainian time zone, i need the same one, but this time it will target tuesday 9pm in kyiv
+
+
+ChatGPT said:
+
+Thought for 6s
+Nice — here’s a shorter, compact version that does the same thing: counts down to the next Tuesday at 21:00 in Kyiv (Europe/Kyiv). Paste the HTML anywhere; it updates every second and if it hits the target it advances to the following Tuesday.
+
+html
+Copy code
+<div id="countdown">--d --h --m --s</div>
+
+<script>
+// compact helper: resolve wall-clock in IANA zone to a UTC timestamp (binary search)
+function zonedLocalToTs(y,m,d,h,minute=0,second=0, tz='Europe/Kyiv') {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  });
+  const target = { year:y, month:m, day:d, hour:h, minute, second };
+  const partsFor = ts => {
+    const parts = dtf.formatToParts(new Date(ts));
+    const map = {};
+    for (const p of parts) if (p.type!=='literal') map[p.type]=Number(p.value);
+    return map;
+  };
+  let base = Date.UTC(y, m-1, d, h, minute, second);
+  let low = base - 36*3600e3, high = base + 36*3600e3;
+  while (low <= high) {
+    const mid = Math.floor((low+high)/2);
+    const p = partsFor(mid);
+    const cmp = (p.year-target.year)||(p.month-target.month)||(p.day-target.day)||
+                (p.hour-target.hour)||(p.minute-target.minute)||(p.second-target.second);
+    if (cmp===0) return mid;
+    if (cmp < 0) low = mid + 1; else high = mid - 1;
+  }
+  throw new Error('Intl lookup failed');
+}
+
+// get next Tuesday 21:00 in Kyiv
+function nextTuesday21KyivTs() {
+  const tz='Europe/Kyiv';
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US',{
+    timeZone:tz, year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  }).formatToParts(now).reduce((acc,p)=> (p.type!=='literal'? (acc[p.type]=Number(p.value),acc):acc),{});
+  const weekdayStr = new Intl.DateTimeFormat('en-US',{timeZone:tz, weekday:'short'}).format(now);
+  const wmap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+  let delta = (2 - wmap[weekdayStr] + 7) % 7;
+  if (delta === 0) { // today Tuesday: keep today if before 21:00
+    const after = (parts.hour > 21) || (parts.hour === 21 && (parts.minute>0 || parts.second>0));
+    if (after) delta = 7;
+  }
+  const baseKyivDate = new Date(Date.UTC(parts.year, parts.month-1, parts.day));
+  baseKyivDate.setUTCDate(baseKyivDate.getUTCDate() + delta);
+  return zonedLocalToTs(baseKyivDate.getUTCFullYear(),
+                        baseKyivDate.getUTCMonth()+1,
+                        baseKyivDate.getUTCDate(),
+                        21,0,0,tz);
+}
+
+// render loop
+(function(){
+  const el = document.getElementById('countdown');
+  let target = nextTuesday21KyivTs();
+  function fmt(n){return String(n).padStart(2,'0');}
+  function tick(){
+    const now = Date.now();
+    if (now >= target) target = nextTuesday21KyivTs();
+    let diff = Math.max(0, target - now);
+    const days = Math.floor(diff / 86400000); diff -= days*86400000;
+    const hours = Math.floor(diff / 3600000); diff -= hours*3600000;
+    const minutes = Math.floor(diff / 60000); diff -= minutes*60000;
+    const seconds = Math.floor(diff / 1000);
+    el.textContent = `${fmt(days)}d ${fmt(hours)}h ${fmt(minutes)}m ${fmt(seconds)}s`;
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
 
 
 </body>
 </html>
+
 
 
 
