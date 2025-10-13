@@ -15,25 +15,22 @@
     <main id="slides-container">
   <!-- First slide: Video -->
   <section class="slide slide-video">
-  <video autoplay muted playsinline id="bg-video">
-    <source src="video/1111.mp4" type="video/mp4">
-    <source src="video/2222.mp4" type="video/mp4">
-  </video>
-</section>
-<section class="slide"></section>
-<section class="slide"></section>
-<section class="slide"></section>
-<div id="slides-container">
+    <video autoplay muted playsinline id="bg-video">
+      <source src="video/1111.mp4" type="video/mp4">
+      <source src="video/2222.mp4" type="video/mp4">
+    </video>
+  </section>
+
+  <section class="slide"></section>
+  <section class="slide"></section>
+  <section class="slide"></section>
+
+  <!-- Last (footer) slide - put countdown here -->
   <section class="slide slide-footer">
     <div id="countdown"></div>
   </section>
-</div>
+</main>
 
-<button id="slideToggleBtn" aria-label="Next slide">
-  <span class="arrow-wrapper">
-    <img id="arrowIcon" src="images/pb.png" alt="arrow">
-  </span>
-</button>
 
 
 
@@ -109,5 +106,6 @@ videoPlayer.addEventListener("ended", () => {
 
 </body>
 </html>
+
 
 
