@@ -149,13 +149,20 @@ function nextTuesday21KyivTs() {
   function fmt(n){return String(n).padStart(2,'0');}
   function tick(){
     const now = Date.now();
-    if (now >= target) target = nextTuesday21KyivTs();
     let diff = Math.max(0, target - now);
     const days = Math.floor(diff / 86400000); diff -= days*86400000;
     const hours = Math.floor(diff / 3600000); diff -= hours*3600000;
     const minutes = Math.floor(diff / 60000); diff -= minutes*60000;
     const seconds = Math.floor(diff / 1000);
-    el.textContent = `${fmt(days)}d ${fmt(hours)}h ${fmt(minutes)}m ${fmt(seconds)}s`;
+
+    // show final message when countdown ends
+    if(diff === 0){
+      el.textContent = "Countdown Finished!";
+    } else {
+      el.textContent = `${fmt(days)}d ${fmt(hours)}h ${fmt(minutes)}m ${fmt(seconds)}s`;
+    }
+
+    // removed any automatic reset, so countdown stops at zero
   }
   tick();
   setInterval(tick, 1000);
@@ -164,8 +171,10 @@ function nextTuesday21KyivTs() {
 
 
 
+
 </body>
 </html>
+
 
 
 
