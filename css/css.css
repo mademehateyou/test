@@ -216,10 +216,13 @@ footer {
   transform: translate(-50%, -50%);
   font-family: "Bebas Neue", sans-serif;
   font-size: clamp(3rem, 6vw, 6rem);
-  color: #000; /* use #000 for contrast since footer bg is cyan (#28bfd3) */
-  text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+  color: #000; /* black text for contrast on cyan background */
+  text-shadow: 2px 2px 6px rgba(0,0,0,0.35);
   text-align: center;
+  z-index: 20; /* ensure on top of video/image */
+  pointer-events: none; /* optional: keeps clicks through to underlying elements */
 }
+
 
 
 
