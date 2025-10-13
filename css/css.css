@@ -209,19 +209,27 @@ footer {
 }
 
 /* Center the countdown on the footer (last slide) */
+/* Responsive centered countdown */
 #countdown {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-family: "Bebas Neue", sans-serif;
-  font-size: clamp(3rem, 6vw, 6rem);
-  color: #000; /* black text for contrast on cyan background */
+  font-size: clamp(2rem, 7vw, 6rem); /* scales for mobile → desktop */
+  color: #000;
   text-shadow: 2px 2px 6px rgba(0,0,0,0.35);
   text-align: center;
-  z-index: 20; /* ensure on top of video/image */
-  pointer-events: none; /* optional: keeps clicks through to underlying elements */
+  z-index: 20;
+  pointer-events: none;
+
+  /* Prevent text from squeezing together on small screens */
+  letter-spacing: clamp(0.2rem, 1vw, 0.5rem);
+  line-height: 1.1; /* compact but not overlapping */
+  word-spacing: clamp(0.3rem, 1.5vw, 1rem);
+  white-space: nowrap; /* keeps everything in one line */
 }
+
 
 
 
