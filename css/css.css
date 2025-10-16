@@ -208,30 +208,6 @@ footer {
   }
 }
 
-#countdown {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  gap: 0.3em;                       /* spacing between blocks */
-  font-size: clamp(2rem, 8vw, 6rem);
-  color: deeppink;
-  z-index: 10;
-  white-space: nowrap;              /* prevent wrapping */
-  font-family: "Bebas Neue", sans-serif;
-}
-
-#countdown .unit {
-  display: inline-block;
-  min-width: 1ch;                   /* keeps digits stable */
-  text-align: center;
-  letter-spacing: 0em;           /* pulls number + letter closer */
-}
-
-
-
-
 
 
 
