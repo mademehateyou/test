@@ -15,32 +15,27 @@
     <main id="slides-container">
   <!-- First slide: Video -->
   <section class="slide slide-video">
-    <video autoplay muted playsinline id="bg-video">
-      <source src="video/1111.mp4" type="video/mp4">
-      <source src="video/2222.mp4" type="video/mp4">
-    </video>
-  </section>
-
-  <section class="slide"></section>
-  <section class="slide"></section>
-  <section class="slide"></section>
-
-  <!-- Last (footer) slide - put countdown here -->
+  <video autoplay muted playsinline id="bg-video">
+    <source src="video/1111.mp4" type="video/mp4">
+    <source src="video/2222.mp4" type="video/mp4">
+  </video>
+</section>
+<section class="slide"></section>
+<section class="slide"></section>
+<section class="slide"></section>
+<div id="slides-container">
   <section class="slide slide-footer">
-    <div id="countdown">
-  <span id="days">--</span>
-  <span id="hours">--</span>
-  <span id="minutes">--</span>
-  <span id="seconds">--</span>
-</div>
+    <img src="images/album coverrr.jpg" alt="Album cover" class="footer-img">
+    <a href="https://albumoutnow.mssg.me/" target="_blank" class="footer-link">LISTEN</a>
   </section>
-</main>
+</div>
 
 <button id="slideToggleBtn" aria-label="Next slide">
   <span class="arrow-wrapper">
     <img id="arrowIcon" src="images/pb.png" alt="arrow">
   </span>
 </button>
+    </main>
 
 
 <script>const slides = document.querySelectorAll('.slide');
@@ -86,102 +81,5 @@ videoPlayer.addEventListener("ended", () => {
 
 
 
-
-
-
-
-    
-
-<script>
-// compact helper: resolve wall-clock in IANA zone to a UTC timestamp (binary search)
-function zonedLocalToTs(y,m,d,h,minute=0,second=0, tz='Europe/Kyiv') {
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit',
-    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
-  });
-  const target = { year:y, month:m, day:d, hour:h, minute, second };
-  const partsFor = ts => {
-    const parts = dtf.formatToParts(new Date(ts));
-    const map = {};
-    for (const p of parts) if (p.type!=='literal') map[p.type]=Number(p.value);
-    return map;
-  };
-  let base = Date.UTC(y, m-1, d, h, minute, second);
-  let low = base - 36*3600e3, high = base + 36*3600e3;
-  while (low <= high) {
-    const mid = Math.floor((low+high)/2);
-    const p = partsFor(mid);
-    const cmp = (p.year-target.year)||(p.month-target.month)||(p.day-target.day)||
-                (p.hour-target.hour)||(p.minute-target.minute)||(p.second-target.second);
-    if (cmp===0) return mid;
-    if (cmp < 0) low = mid + 1; else high = mid - 1;
-  }
-  throw new Error('Intl lookup failed');
-}
-
-// get next Tuesday 21:00 in Kyiv
-function nextTuesday21KyivTs() {
-  const tz='Europe/Kyiv';
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat('en-US',{
-    timeZone:tz, year:'numeric', month:'2-digit', day:'2-digit',
-    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
-  }).formatToParts(now).reduce((acc,p)=> (p.type!=='literal'? (acc[p.type]=Number(p.value),acc):acc),{});
-  const weekdayStr = new Intl.DateTimeFormat('en-US',{timeZone:tz, weekday:'short'}).format(now);
-  const wmap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
-  let delta = (2 - wmap[weekdayStr] + 7) % 7;
-  if (delta === 0) { // today Tuesday: keep today if before 21:00
-    const after = (parts.hour > 21) || (parts.hour === 21 && (parts.minute>0 || parts.second>0));
-    if (after) delta = 7;
-  }
-  const baseKyivDate = new Date(Date.UTC(parts.year, parts.month-1, parts.day));
-  baseKyivDate.setUTCDate(baseKyivDate.getUTCDate() + delta);
-  return zonedLocalToTs(baseKyivDate.getUTCFullYear(),
-                        baseKyivDate.getUTCMonth()+1,
-                        baseKyivDate.getUTCDate(),
-                        21,0,0,tz);
-}
-
-// render loop
-(function(){
-  const el = document.getElementById('countdown');
-  let target = nextTuesday21KyivTs();
-  function fmt(n){return String(n).padStart(2,'0');}
-  function tick(){
-    const now = Date.now();
-    let diff = Math.max(0, target - now);
-    const days = Math.floor(diff / 86400000); diff -= days*86400000;
-    const hours = Math.floor(diff / 3600000); diff -= hours*3600000;
-    const minutes = Math.floor(diff / 60000); diff -= minutes*60000;
-    const seconds = Math.floor(diff / 1000);
-
-    // show final message when countdown ends
-    if(diff === 0){
-      el.textContent = "ALBUM!";
-    } else {
-      el.textContent = `${fmt(days)}d ${fmt(hours)}h ${fmt(minutes)}m ${fmt(seconds)}s`;
-    }
-
-    // removed any automatic reset, so countdown stops at zero
-  }
-  tick();
-  setInterval(tick, 1000);
-})();
-</script>
-
-
-
-
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
